@@ -16,167 +16,13 @@ public class ContentReaderGZIP {
 	public void init() {
 	}
 
-	// 提取AnchorTag之间的全部内容,不进行处理
-	// 被extractAnchorTextProcessed取代
-	public ByteArrayOutputStream extractAnchorTextUnprocessed(ExtendedBufferedInputStream ebis) throws IOException {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-		// 为了输出未能成功配对的AnchorTag的内容，用来计算该内容的长度的下标
-		int indexOfErrTag = 0;
-
-		//
-		label1: while (true) {
-			int c = ebis.read();
-			if (isEnd(c)) {
-				break label1;
-			}
-			if (c == 60) {
-				c = ebis.read();
-				if (isEnd(c)) {
-					break label1;
-				}
-				if (c == 65 || c == 97) {
-					c = ebis.read();
-					if (isEnd(c)) {
-						break label1;
-					}
-					if (c <= 32) {
-						ebis.markTag(3);
-						ebis.reset();
-
-						//
-						indexOfErrTag = 0;
-						for (int i = 0; i < 3; i++) {
-							c = ebis.read();
-							baos.write(c);
-							indexOfErrTag++;
-						}
-						label2: while (true) {
-
-							c = ebis.read();
-							if (isEnd(c)) {
-								break label1;
-							}
-							if (skipC(c)) {
-								indexOfErrTag++;
-								continue;
-							}
-							if (c == 60) {
-								c = ebis.read();
-								if (isEnd(c)) {
-									break label1;
-								}
-								if (skipC(c)) {
-									indexOfErrTag++;
-									continue;
-								}
-								if (c == 65 || c == 97) {
-									c = ebis.read();
-									if (isEnd(c)) {
-										break label1;
-									}
-									if (skipC(c)) {
-										indexOfErrTag++;
-										continue;
-									}
-									if (c <= 32) {
-										ebis.markTag(3);
-										ebis.reset();
-										baos.write(13);
-
-										// 显示未能成功配对的AnchorTag之间的内容
-										// ByteArrayOutputStream baos2 = new
-										// ByteArrayOutputStream();
-										// ebis.markTag(indexOfErrTag);
-										// ebis.reset();
-										// for (int i = 0; i < indexOfErrTag +
-										// 3; i++) {
-										// c = ebis.read();
-										// baos2.write(c);
-										// }
-										// System.out.println(baos2.toString());
-
-										break label2;
-									} else {
-										baos.write(c);
-										indexOfErrTag++;
-									}
-								} else if (c == 47) {
-									c = ebis.read();
-									if (isEnd(c)) {
-										break label1;
-									}
-									if (skipC(c)) {
-										continue;
-									}
-									if (c == 65 || c == 97) {
-										c = ebis.read();
-										if (isEnd(c)) {
-											break label1;
-										}
-										if (skipC(c)) {
-											indexOfErrTag++;
-											continue;
-										}
-										if (c == 62) {
-											ebis.markTag(4);
-											ebis.reset();
-											for (int i = 0; i < 4; i++) {
-												c = ebis.read();
-												baos.write(c);
-											}
-											baos.write(13);
-											break label2;
-										} else {
-											ebis.markTag(4);
-											ebis.reset();
-											for (int i = 0; i < 4; i++) {
-												c = ebis.read();
-												baos.write(c);
-												indexOfErrTag++;
-											}
-										}
-									} else {
-										ebis.markTag(3);
-										ebis.reset();
-										for (int i = 0; i < 3; i++) {
-											c = ebis.read();
-											baos.write(c);
-											indexOfErrTag++;
-										}
-									}
-								} else {
-									ebis.markTag(2);
-									ebis.reset();
-									for (int i = 0; i < 2; i++) {
-										c = ebis.read();
-										baos.write(c);
-										indexOfErrTag++;
-									}
-								}
-							} else {
-								baos.write(c);
-								indexOfErrTag++;
-							}
-						}
-
-					}
-				}
-			}
-
-		}
-		return baos;
-	}
-
-	// 提取AnchorTag之间的全部内容，进行内容
-	// 每读取到一条AnchorTag就重制输出流，将AnchorTag之间未处理的内容写入输出流
+	/**
+	 * 提取AnchorTag之间的全部内容，进行处理 每读取到一条AnchorTag就重制输出流，将AnchorTag之间未处理的内容写入输出流
+	 */
 	public ByteArrayOutputStream extractAnchorTextProcessed(ExtendedBufferedInputStream ebis, String uri)
 			throws Exception {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		ByteArrayOutputStream anchorList = new ByteArrayOutputStream();
-
-		// 为了输出未能成功配对的AnchorTag的内容，用来计算该内容的长度的下标
-		int indexOfErrTag = 0;
 
 		// 循环读取字节
 		label1: while (true) {
@@ -206,14 +52,12 @@ public class ContentReaderGZIP {
 
 						// 识别"<a "成功，回撤3个字符，将"<a "写入输出流
 						baos = new ByteArrayOutputStream();
-						indexOfErrTag = 0;
 						for (int i = 0; i < 3; i++) {
 							c = ebis.read();
 							baos.write(c);
-							indexOfErrTag++;
 						}
 
-						// 读取<a标签里的内容
+						// 循环读取字符，写入输出流，直到a标签结束
 						label2: while (true) {
 
 							c = ebis.read();
@@ -221,27 +65,29 @@ public class ContentReaderGZIP {
 								break label1;
 							}
 							if (skipC(c)) {
-								indexOfErrTag++;
 								continue;
 							}
+
+							// 搜到 '<' 标签头
 							if (c == 60) {
 								c = ebis.read();
 								if (isEnd(c)) {
 									break label1;
 								}
 								if (skipC(c)) {
-									indexOfErrTag++;
 									continue;
 								}
+
+								// 搜到 "<a" 可能为新的a标签 
 								if (c == 65 || c == 97) {
 									c = ebis.read();
 									if (isEnd(c)) {
 										break label1;
 									}
 									if (skipC(c)) {
-										indexOfErrTag++;
 										continue;
 									}
+									// 搜到 "<a " 确定为新的a标签，上一个a标签强行结束，回撤3个字符，写入输出流，并提交
 									if (c <= 32) {
 										ebis.markTag(3);
 										ebis.reset();
@@ -249,24 +95,17 @@ public class ContentReaderGZIP {
 										// extractAnchorText(baos, anchorList);
 										extractAndProcessAnchorText(baos, anchorList, uri);
 
-										// 显示未能成功配对的AnchorTag之间的内容
-										// ByteArrayOutputStream baos2 = new
-										// ByteArrayOutputStream();
-										// ebis.markTag(indexOfErrTag);
-										// ebis.reset();
-										// for (int i = 0; i < indexOfErrTag +
-										// 3; i++) {
-										// c = ebis.read();
-										// baos2.write(c);
-										// }
-										// System.out.println(baos2.toString());
-
 										break label2;
-									} else {
-										baos.write(c);
-										indexOfErrTag++;
 									}
-								} else if (c == 47) {
+									
+									//搜到的不是 "<a " 而是其他如 "<ab..."，跳过这个非a标签，写入输出流
+									else {
+										baos.write(c);
+									}
+								}
+								
+								// 搜到 '</' 可能为</a>标签结尾
+								else if (c == 47) {
 									c = ebis.read();
 									if (isEnd(c)) {
 										break label1;
@@ -274,15 +113,17 @@ public class ContentReaderGZIP {
 									if (skipC(c)) {
 										continue;
 									}
+									// 搜到 "</a" 很可能为</a>标签结尾
 									if (c == 65 || c == 97) {
 										c = ebis.read();
 										if (isEnd(c)) {
 											break label1;
 										}
 										if (skipC(c)) {
-											indexOfErrTag++;
 											continue;
 										}
+										
+										// 搜到 "</a>" 确定为</a>标签结尾，上一个a标签结束，回撤4个字符，写入输出流，并提交
 										if (c == 62) {
 											ebis.markTag(4);
 											ebis.reset();
@@ -291,17 +132,17 @@ public class ContentReaderGZIP {
 												baos.write(c);
 											}
 											baos.write(13);
-											// extractAnchorText(baos,
-											// anchorList);
 											extractAndProcessAnchorText(baos, anchorList, uri);
 											break label2;
-										} else {
+										} 
+										
+										// 搜到的不是 "</a>" 而是其他如 "</ab.."，跳过这个非a标签，回撤4个字符，写入输出流
+										else {
 											ebis.markTag(4);
 											ebis.reset();
 											for (int i = 0; i < 4; i++) {
 												c = ebis.read();
 												baos.write(c);
-												indexOfErrTag++;
 											}
 										}
 									} else {
@@ -310,7 +151,6 @@ public class ContentReaderGZIP {
 										for (int i = 0; i < 3; i++) {
 											c = ebis.read();
 											baos.write(c);
-											indexOfErrTag++;
 										}
 									}
 								} else {
@@ -319,12 +159,10 @@ public class ContentReaderGZIP {
 									for (int i = 0; i < 2; i++) {
 										c = ebis.read();
 										baos.write(c);
-										indexOfErrTag++;
 									}
 								}
 							} else {
 								baos.write(c);
-								indexOfErrTag++;
 							}
 						}
 
@@ -336,96 +174,9 @@ public class ContentReaderGZIP {
 		return anchorList;
 	}
 
-	// 处理每一条识别出来的AnchorTag之间的内容，抽取href内容和anchortext内容，'不'经过处理放入anchorList中
-	// 被extractAndProcessAnchorText取代
-	public void extractAnchorText(ByteArrayOutputStream baos, ByteArrayOutputStream anchorList) {
-		byte[] bytes = baos.toByteArray();
-
-		int index = 0;
-		label1: while (true) {
-			byte b1 = bytes[index++];
-
-			if (b1 == 13) {
-				anchorList.write(13);
-				break label1;
-			}
-
-			if (b1 == 60) {
-				label2: while (true) {
-					byte b2 = bytes[index++];
-
-					if (b2 == 13) {
-						anchorList.write(13);
-						break label1;
-					}
-
-					if (b2 == 72 || b2 == 104) {
-						b2 = bytes[index++];
-
-						if (b2 == 13) {
-							anchorList.write(13);
-							break label1;
-						}
-
-						if (b2 == 82 || b2 == 114) {
-							b2 = bytes[index++];
-
-							if (b2 == 13) {
-								anchorList.write(13);
-								break label1;
-							}
-
-							if (b2 == 69 || b2 == 101) {
-								b2 = bytes[index++];
-
-								if (b2 == 13) {
-									anchorList.write(13);
-									break label1;
-								}
-
-								if (b2 == 70 || b2 == 102) {
-									label3: while (true) {
-										byte b3 = bytes[index++];
-
-										if (b3 == 13) {
-											anchorList.write(13);
-											break label1;
-										}
-
-										if (b3 == 34 || b3 == 39) {
-											label4: while (true) {
-												byte b4 = bytes[index++];
-
-												if (b4 == 13) {
-													anchorList.write(13);
-													break label1;
-												}
-
-												if (b4 == 34 || b4 == 39) {
-													anchorList.write(9);
-													break label3;
-												}
-												anchorList.write(b4);
-											}
-										}
-									}
-								}
-
-							}
-						}
-					}
-
-					if (b2 == 62) {
-						break label2;
-					}
-				}
-			} else {
-				anchorList.write(b1);
-			}
-		}
-	}
-
-	// 处理每一条识别出来的AnchorTag之间的内容，抽取href内容和anchortext内容，交给processAnchorText进行处理
+	/**
+	 * 处理每一条识别出来的AnchorTag之间的内容，抽取href内容和anchortext内容，交给processAnchorText进行处理
+	 */
 	public void extractAndProcessAnchorText(ByteArrayOutputStream baos, ByteArrayOutputStream anchorList, String uri)
 			throws Exception {
 		byte[] bytes = baos.toByteArray();
