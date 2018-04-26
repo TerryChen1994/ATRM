@@ -18,7 +18,7 @@ import atrm.parser.gzip.RecordParserGZIP;
 
 public class ParseWarcCompressed {
 
-	private static String warcFileUri = "/users/chentairun/documents/workspace/ATRM/0000wb-00.warc.gz";
+	private static String warcFileUri = "/users/chentairun/documents/workspace/MRTest/0000wb-00.warc.gz";
 	private static String TargetFile = "/users/chentairun/documents/workspace/ATRM/GZIPout.txt";
 
 	public static void main(String[] args) throws Exception {
@@ -62,7 +62,8 @@ public class ParseWarcCompressed {
 			contentParser.extractAnchorText(record.getContent(),
 					record.getRecordHeader().getWarcTargetUri());
 			contentParser.writeAnchorText(record.getRecordHeader().getWarcTargetUri(), bos);
-			if(records == 41355){
+			if(records == 1){
+				break label1;
 			}
 
 		}

@@ -178,27 +178,33 @@ public class ContentReaderGZIP {
 		// 为了输出未能成功配对的AnchorTag的内容，用来计算该内容的长度的下标
 		int indexOfErrTag = 0;
 
-		//
+		// 循环读取字节
 		label1: while (true) {
 			int c = ebis.read();
 			if (isEnd(c)) {
 				break label1;
 			}
+
+			// 识别字符 '<'
 			if (c == 60) {
 				c = ebis.read();
 				if (isEnd(c)) {
 					break label1;
 				}
+
+				// 识别字符 'a' 或 'A'
 				if (c == 65 || c == 97) {
 					c = ebis.read();
 					if (isEnd(c)) {
 						break label1;
 					}
+
+					// 识别'空格'或'换行符'
 					if (c <= 32) {
 						ebis.markTag(3);
 						ebis.reset();
 
-						//
+						// 识别"<a "成功，回撤3个字符，将"<a "写入输出流
 						baos = new ByteArrayOutputStream();
 						indexOfErrTag = 0;
 						for (int i = 0; i < 3; i++) {
@@ -206,6 +212,8 @@ public class ContentReaderGZIP {
 							baos.write(c);
 							indexOfErrTag++;
 						}
+
+						// 读取<a标签里的内容
 						label2: while (true) {
 
 							c = ebis.read();
