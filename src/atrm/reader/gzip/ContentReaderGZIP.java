@@ -2,6 +2,7 @@ package atrm.reader.gzip;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 
 import atrm.common.AnchorTagCal;
@@ -78,7 +79,7 @@ public class ContentReaderGZIP {
 									continue;
 								}
 
-								// 搜到 "<a" 可能为新的a标签 
+								// 搜到 "<a" 可能为新的a标签
 								if (c == 65 || c == 97) {
 									c = ebis.read();
 									if (isEnd(c)) {
@@ -87,23 +88,22 @@ public class ContentReaderGZIP {
 									if (skipC(c)) {
 										continue;
 									}
-									// 搜到 "<a " 确定为新的a标签，上一个a标签强行结束，回撤3个字符，写入输出流，并提交
+									// 搜到 "<a "
+									// 确定为新的a标签，上一个a标签强行结束，回撤3个字符，写入输出流，并提交
 									if (c <= 32) {
 										ebis.markTag(3);
 										ebis.reset();
-										baos.write(13);
-										// extractAnchorText(baos, anchorList);
 										extractAndProcessAnchorText(baos, anchorList, uri);
 
 										break label2;
 									}
-									
-									//搜到的不是 "<a " 而是其他如 "<ab..."，跳过这个非a标签，写入输出流
+
+									// 搜到的不是 "<a " 而是其他如 "<ab..."，跳过这个非a标签，写入输出流
 									else {
 										baos.write(c);
 									}
 								}
-								
+
 								// 搜到 '</' 可能为</a>标签结尾
 								else if (c == 47) {
 									c = ebis.read();
@@ -122,8 +122,9 @@ public class ContentReaderGZIP {
 										if (skipC(c)) {
 											continue;
 										}
-										
-										// 搜到 "</a>" 确定为</a>标签结尾，上一个a标签结束，回撤4个字符，写入输出流，并提交
+
+										// 搜到 "</a>"
+										// 确定为</a>标签结尾，上一个a标签结束，回撤4个字符，写入输出流，并提交
 										if (c == 62) {
 											ebis.markTag(4);
 											ebis.reset();
@@ -131,12 +132,12 @@ public class ContentReaderGZIP {
 												c = ebis.read();
 												baos.write(c);
 											}
-											baos.write(13);
 											extractAndProcessAnchorText(baos, anchorList, uri);
 											break label2;
-										} 
-										
-										// 搜到的不是 "</a>" 而是其他如 "</ab.."，跳过这个非a标签，回撤4个字符，写入输出流
+										}
+
+										// 搜到的不是 "</a>" 而是其他如
+										// "</ab.."，跳过这个非a标签，回撤4个字符，写入输出流
 										else {
 											ebis.markTag(4);
 											ebis.reset();
@@ -145,7 +146,11 @@ public class ContentReaderGZIP {
 												baos.write(c);
 											}
 										}
-									} else {
+									}
+
+									// 搜到的不是 "</a" 而是其他如
+									// "</b"，跳过这个非a标签，回撤3个字符，写入输出流
+									else {
 										ebis.markTag(3);
 										ebis.reset();
 										for (int i = 0; i < 3; i++) {
@@ -153,7 +158,11 @@ public class ContentReaderGZIP {
 											baos.write(c);
 										}
 									}
-								} else {
+								}
+
+								// 搜到的不是 "</" 与 "<a" 而是其他如
+								// "<exp"，跳过这个非a标签，回撤2个字符，写入输出流
+								else {
 									ebis.markTag(2);
 									ebis.reset();
 									for (int i = 0; i < 2; i++) {
@@ -179,62 +188,57 @@ public class ContentReaderGZIP {
 	 */
 	public void extractAndProcessAnchorText(ByteArrayOutputStream baos, ByteArrayOutputStream anchorList, String uri)
 			throws Exception {
+
+		// baos 为以"<a"开头，并截取的a标签内的全部生内容
 		byte[] bytes = baos.toByteArray();
+		// 锚文本输出流
 		ByteArrayOutputStream anchorText = new ByteArrayOutputStream();
+		// 超链接输出流
 		ByteArrayOutputStream href = new ByteArrayOutputStream();
 
-		int index = 0;
-		label1: while (true) {
-			byte b1 = bytes[index++];
-
-			if (b1 == 13) {
-				break label1;
-			}
-
+		for (int i = 0; i < bytes.length;) {
+			byte b1 = bytes[i++];
+			
+			if(skipC(b1)) continue;
+			
+			// 识别'<',进入标签
 			if (b1 == 60) {
+
+				// 循环读取内容，直到读取到"href"为止
 				label2: while (true) {
-					byte b2 = bytes[index++];
+					byte b2 = bytes[i++];
+					if(skipC(b2)) continue;;
 
-					if (b2 == 13) {
-						break label1;
-					}
-
+					// 读取到'h'
 					if (b2 == 72 || b2 == 104) {
-						b2 = bytes[index++];
+						b2 = bytes[i++];
 
-						if (b2 == 13) {
-							break label1;
-						}
+						if(skipC(b2)) continue;;
 
+						// 读取到'r'
 						if (b2 == 82 || b2 == 114) {
-							b2 = bytes[index++];
+							b2 = bytes[i++];
 
-							if (b2 == 13) {
-								break label1;
-							}
+							if(skipC(b2)) continue;;
 
+							// 读取到'e'
 							if (b2 == 69 || b2 == 101) {
-								b2 = bytes[index++];
+								b2 = bytes[i++];
 
-								if (b2 == 13) {
-									break label1;
-								}
+								if(skipC(b2)) continue;;
 
+								// 读取到'f'
 								if (b2 == 70 || b2 == 102) {
 									label3: while (true) {
-										byte b3 = bytes[index++];
+										byte b3 = bytes[i++];
 
-										if (b3 == 13) {
-											break label1;
-										}
+										if(skipC(b2)) continue;;
 
 										if (b3 == 34 || b3 == 39) {
 											label4: while (true) {
-												byte b4 = bytes[index++];
+												byte b4 = bytes[i++];
 
-												if (b4 == 13) {
-													break label1;
-												}
+												if(skipC(b2)) continue;;
 
 												if (b4 == 34 || b4 == 39) {
 													break label3;
@@ -252,14 +256,20 @@ public class ContentReaderGZIP {
 						}
 					}
 
+					// 读取到'>'，表示
 					if (b2 == 62) {
+						
 						break label2;
 					}
 				}
-			} else {
+			}
+			
+			// 标签外内容为锚文本内容
+			else {
 				anchorText.write(b1);
 			}
 		}
+
 		processHrefAndAnchorText(anchorText, href, anchorList, uri);
 	}
 
@@ -278,18 +288,20 @@ public class ContentReaderGZIP {
 			try {
 				URL url = new URL(new URL(uri), sHref);
 				sHref = url.toString();
+				url.getAuthority();
 				validHref = true;
-			} catch (Exception e) {
+				outHref.write(sHref.getBytes());
+			} catch (MalformedURLException e) {
 				validHref = false;
 			}
-			if (validHref) {
-				if (sHref.startsWith("http://") || sHref.startsWith("https://")) {
-					outHref.write(sHref.getBytes());
-					validHref = true;
-				} else {
-					validHref = false;
-				}
-			}
+//			if (validHref) {
+//				if (sHref.startsWith("http://") || sHref.startsWith("https://")) {
+//					outHref.write(sHref.getBytes());
+//					validHref = true;
+//				} else {
+//					validHref = false;
+//				}
+//			}
 
 		} else {
 			validHref = false;

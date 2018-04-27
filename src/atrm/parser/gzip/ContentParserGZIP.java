@@ -27,13 +27,9 @@ public class ContentParserGZIP {
 
 	public void extractAnchorText(ExtendedBufferedInputStream ebis, String uri) throws Exception {
 		baos = contentReaderGzip.extractAnchorTextProcessed(ebis, uri);
-		// baos = contentReader.extractAnchorUnprocessed(ebis);
-		// System.out.println(baos.toString());
-
 	}
 
 	public void writeAnchorText(String Uri, BufferedOutputStream bos) throws IOException {
-
 		anchorTextWriter.writeAnchorText(Uri, bos, baos);
 
 	}

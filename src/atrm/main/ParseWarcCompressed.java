@@ -19,7 +19,7 @@ import atrm.parser.gzip.RecordParserGZIP;
 public class ParseWarcCompressed {
 
 	private static String warcFileUri = "/users/chentairun/documents/workspace/MRTest/0000wb-00.warc.gz";
-	private static String TargetFile = "/users/chentairun/documents/workspace/ATRM/GZIPout.txt";
+	private static String TargetFile = "/users/chentairun/documents/workspace/MRTest/GZIPout.txt";
 
 	public static void main(String[] args) throws Exception {
 		File outFile = new File(TargetFile);
@@ -27,14 +27,15 @@ public class ParseWarcCompressed {
 		try {
 			ExtendedGZIPInputStream egzis = new ExtendedGZIPInputStream(new FileInputStream(warcFileUri));
 
-			OutputStream out = new FileOutputStream(outFile);
-			BufferedOutputStream bos = new BufferedOutputStream(out, 16384);
+			FileOutputStream out = new FileOutputStream(outFile);
+			BufferedOutputStream bos = new BufferedOutputStream(out);
 
 			parseFileHeader(egzis);
 
 			processAnchor(egzis, bos);
 
 			egzis.close();
+			bos.close();
 			out.close();
 
 		} catch (FileNotFoundException e) {

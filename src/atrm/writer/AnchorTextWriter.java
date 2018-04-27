@@ -10,7 +10,6 @@ public class AnchorTextWriter {
 	}
 
 	public void writeAnchorText(String Uri, BufferedOutputStream bos, ByteArrayOutputStream baos) throws IOException {
-		
 		bos.write(Uri.getBytes());
 		bos.write(13);
 		bos.write(baos.toByteArray());
