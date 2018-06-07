@@ -35,8 +35,8 @@ public class ExtendedBufferedInputStream extends BufferedInputStream {
 		pos--;
 //		判断是否已经读取size长度的内容到byte[]里，如果没有读取完整，循环读取直到读取完整
 		while (gzis != null && count != size) {
-			System.out.println("Count read " + count);
-			System.out.println("gzis.Buf is " + gzis.readBuf);
+//			System.out.println("Count read " + count);
+//			System.out.println("gzis.Buf is " + gzis.readBuf);
 			byte[] buffer = this.getBufIfOpen();
 			count += gzis.read(buffer, count, size - count);
 		}
